@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>イベント出欠・集金ナビ</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-50 p-4 font-sans antialiased text-gray-800">
+    <div class="max-w-md mx-auto space-y-6">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
+            
+            <div id="create-zone" class="space-y-4">
+                <h1 class="text-xl font-black text-center text-indigo-600 mb-6">📅 イベント案内を作ろう</h1>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">イベント名</label>
+                    <input id="event-title" type="text" placeholder="例：サークル新年会" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">日時</label>
+                        <input id="event-date" type="text" placeholder="例：1月15日 19:00〜" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">会費 (円)</label>
+                        <input id="event-fee" type="number" placeholder="例：4000" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">場所</label>
+                    <input id="event-place" type="text" placeholder="例：居酒屋〇〇 渋谷店" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">決済方法</label>
+                    <input id="event-pay" type="text" placeholder="例：PayPay or 現金手渡し" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">詳しい説明・メモ</label>
+                    <textarea id="event-desc" rows="3" placeholder="例：アレルギーがある方は教えてね！" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"></textarea>
+                </div>
+
+                <button onclick="generateLink()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all cursor-pointer">✨ 招待リンクを生成する</button>
+                
+                <div id="result-zone" class="hidden mt-6 p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-200 space-y-3">
+                    <p class="text-sm font-bold text-emerald-800">🎉 招待リンクができました！</p>
+                    <input id="share-url" type="text" readonly class="w-full border border-emerald-300 p-2.5 rounded-xl text-xs bg-white focus:outline-none font-mono">
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="copyLink('share-url')" class="bg-emerald-600 text-white p-2 rounded-xl text-xs font-bold hover:bg-emerald-700 cursor-pointer">URLをコピー</button>
+                        <button onclick="makeShortUrl('share-url')" class="bg-blue-600 text-white p-2 rounded-xl text-xs font-bold hover:bg-blue-700 cursor-pointer">URLを短縮する</button>
+                    </div>
+
+                    <div class="flex flex-col items-center pt-2 border-t border-emerald-200">
+                        <p class="text-xs text-emerald-700 font-bold mb-2">📸 対面ならQRコード読み取りもOK</p>
+                        <div id="create-qrcode" class="bg-white p-2 rounded-lg shadow-sm"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="guest-zone" class="hidden space-y-5">
+                <div class="text-center space-y-2">
+                    <span class="bg-indigo-100 text-indigo-700 text-xs font-black px-2.5 py-1 rounded-full">招待状</span>
+                    <h2 id="view-title" class="text-2xl font-black text-gray-800"></h2>
+                </div>
+                
+                <div class="bg-gray-50 p-4 rounded-xl space-y-3 border border-gray-100">
+                    <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">📅 日時</span><span id="view-date" class="text-sm font-bold text-gray-700"></span></div>
+                    <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">📍 場所</span><span id="view-place" class="text-sm font-bold text-gray-700"></span></div>
+                    <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">💰 会費</span><span class="text-sm font-black text-rose-600"><span id="view-fee"></span> 円</span></div>
+                    <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">💳 決済</span><span id="view-pay" class="text-sm font-bold text-gray-700"></span></div>
+                    <div class="pt-1"><span class="text-xs font-bold text-gray-400 block mb-1">📝 幹事より</span><p id="view-desc" class="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-white p-2 rounded-lg border border-gray-200"></p></div>
+                </div>
+
+                <div id="input-area" class="border-t-2 border-dashed border-gray-200 pt-4 space-y-3">
+                    <h3 class="text-sm font-black text-gray-700">🙋‍♂️ あなたの出欠を報告する</h3>
+                    <div>
+                        <input id="guest-name" type="text" placeholder="お名前（例：たなか）" class="w-full border-2 border-gray-200 p-2 rounded-xl focus:border-indigo-500 focus:outline-none text-sm">
+                    </div>
+                    <div>
+                        <input id="guest-allergy" type="text" placeholder="アレルギー等（なければ空欄でOK）" class="w-full border-2 border-gray-200 p-2 rounded-xl focus:border-indigo-500 focus:outline-none text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="submitAttendance('🥳 行きます！')" class="bg-indigo-600 text-white p-2.5 rounded-xl font-bold hover:bg-indigo-700 text-sm cursor-pointer shadow-md">🥳 行きます！</button>
+                        <button onclick="submitAttendance('😢 ごめんなさい')" class="bg-gray-400 text-white p-2.5 rounded-xl font-bold hover:bg-gray-500 text-sm cursor-pointer shadow-md">😢 ごめんなさい</button>
+                    </div>
+                </div>
+
+                <div id="reply-zone" class="hidden border-t-2 border-dashed border-gray-200 pt-4 space-y-3">
+                    <p class="text-sm font-bold text-indigo-700">👇 下の「返信リンク」をコピーして幹事さんに送ってね！</p>
+                    <input id="reply-url" type="text" readonly class="w-full border border-indigo-300 p-2.5 rounded-xl text-xs bg-gray-50 font-mono">
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="copyLink('reply-url')" class="bg-indigo-600 text-white p-2 rounded-xl text-xs font-bold hover:bg-indigo-700 cursor-pointer">リンクをコピー</button>
+                        <button onclick="makeShortUrl('reply-url')" class="bg-blue-600 text-white p-2 rounded-xl text-xs font-bold hover:bg-blue-700 cursor-pointer">URLを短縮する</button>
+                    </div>
+
+                    <div class="flex flex-col items-center pt-2 border-t border-indigo-200">
+                        <p class="text-xs text-indigo-700 font-bold mb-2">📸 幹事のスマホで直接読み取ってもらうのもOK</p>
+                        <div id="reply-qrcode" class="bg-white p-2 rounded-lg shadow-sm"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-zone" class="hidden bg-white p-6 rounded-2xl shadow-xl border border-gray-100 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h2 class="text-lg font-black text-gray-800">📊 幹事の管理画面</h2>
+                <button onclick="clearData()" class="text-xs text-red-500 hover:underline cursor-pointer">データをリセット</button>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-blue-50 p-2 rounded-xl"><p class="text-xs text-blue-600 font-bold">出席数</p><p id="count-attend" class="text-lg font-black text-blue-700">0人</p></div>
+                <div class="bg-emerald-50 p-2 rounded-xl"><p class="text-xs text-emerald-600 font-bold">回収済み</p><p id="count-paid" class="text-lg font-black text-emerald-700">0円</p></div>
+                <div class="bg-rose-50 p-2 rounded-xl"><p class="text-xs text-rose-600 font-bold">未回収</p><p id="count-unpaid" class="text-lg font-black text-rose-700">0円</p></div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-gray-400 text-xs border-b">
+                            <th class="pb-2">名前</th>
+                            <th class="pb-2">出欠</th>
+                            <th class="pb-2">アレルギー</th>
+                            <th class="pb-2 text-center">集金</th>
+                        </tr>
+                    </thead>
+                    <tbody id="member-list-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('t');
+        const title = urlParams.get('t');
+        const date  = urlParams.get('d');
+        const place = urlParams.get('p');
+        const fee   = urlParams.get('f') ? parseInt(urlParams.get('f')) : 0;
+        const pay   = urlParams.get('y');
+        const desc  = urlParams.get('s');
+
+        const gName = urlParams.get('name');
+        const gStatus = urlParams.get('status');
+        const gAllergy = urlParams.get('allergy');
+
+        let createQR = null;
+        let replyQR = null;
+
+        window.onload = function() {
+            if (title) {
+                document.getElementById('create-zone').classList.add('hidden');
+                document.getElementById('guest-zone').classList.remove('hidden');
+                
+                document.getElementById('view-title').innerText = decodeURIComponent(title);
+                document.getElementById('view-date').innerText  = decodeURIComponent(date || '');
+                document.getElementById('view-place').innerText = decodeURIComponent(place || '');
+                document.getElementById('view-fee').innerText   = fee;
+                document.getElementById('view-pay').innerText   = decodeURIComponent(pay || '');
+                document.getElementById('view-desc').innerText  = decodeURIComponent(desc || '');
+
+                showAdminZone();
+
+                if (gName && gStatus) {
+                    saveParticipant(decodeURIComponent(gName), decodeURIComponent(gStatus), decodeURIComponent(gAllergy || ''));
+                    const baseUrl = window.location.origin + window.location.pathname;
+                    const cleanParams = new URLSearchParams(window.location.search);
+                    cleanParams.delete('name');
+                    cleanParams.delete('status');
+                    cleanParams.delete('allergy');
+                    window.history.replaceState({}, '', `${baseUrl}?${cleanParams.toString()}`);
+                }
+            }
+        }
+
+        function generateLink() {
+            const t = document.getElementById('event-title').value;
+            const d = document.getElementById('event-date').value;
+            const p = document.getElementById('event-place').value;
+            const f = document.getElementById('event-fee').value;
+            const y = document.getElementById('event-pay').value;
+            const s = document.getElementById('event-desc').value;
+
+            if(!t) return alert('イベント名は必ず入力してください！');
+
+            // パソコンのローカルファイル(file://)だと短縮機能がエラーになるため警告
+            if(window.location.protocol === 'file:') {
+                alert('⚠️現在はPC内のファイルとして開いています。ネット上に公開(GitHub等)した後は「URLを短縮する」ボタンが使えるようになります！');
+            }
+
+            const baseUrl = window.location.origin + window.location.pathname;
+            const params = new URLSearchParams();
+            params.set('t', t);
+            if(d) params.set('d', d);
+            if(p) params.set('p', p);
+            if(f) params.set('f', f);
+            if(y) params.set('y', y);
+            if(s) params.set('s', s);
+
+            const shareUrl = `${baseUrl}?${params.toString()}`;
+            document.getElementById('share-url').value = shareUrl;
+            document.getElementById('result-zone').classList.remove('hidden');
+            
+            // ① QRコードの生成
+            document.getElementById('create-qrcode').innerHTML = "";
+            createQR = new QRCode(document.getElementById('create-qrcode'), { text: shareUrl, width: 140, height: 140 });
+
+            localStorage.setItem('event_' + t, JSON.stringify([]));
+            showAdminZone();
+        }
+
+        function submitAttendance(status) {
+            const name = document.getElementById('guest-name').value;
+            const allergy = document.getElementById('guest-allergy').value;
+
+            if(!name) return alert('お名前を入力してください！');
+
+            const baseUrl = window.location.origin + window.location.pathname;
+            const params = new URLSearchParams(window.location.search);
+            params.set('name', name);
+            params.set('status', status);
+            if(allergy) params.set('allergy', allergy);
+
+            const replyUrl = `${baseUrl}?${params.toString()}`;
+            document.getElementById('reply-url').value = replyUrl;
+            document.getElementById('input-area').classList.add('hidden');
+            document.getElementById('reply-zone').classList.remove('hidden');
+
+            // ① 返信用QRコードの生成
+            document.getElementById('reply-qrcode').innerHTML = "";
+            replyQR = new QRCode(document.getElementById('reply-qrcode'), { text: replyUrl, width: 140, height: 140 });
+        }
+
+        // ② 無料の短縮API(is.gd)を使ってURLをギュッと縮める魔法
+        async function makeShortUrl(inputId) {
+            const inputEl = document.getElementById(inputId);
+            const longUrl = inputEl.value;
+
+            if(longUrl.startsWith('file://')) {
+                return alert('ローカルファイル形式(file://)のURLは短縮できません。ネットに公開した後に使えます！');
+            }
+            if(longUrl.includes('is.gd')) {
+                return alert('すでに短縮済みです！');
+            }
+
+            try {
+                // 無料の短縮URLサービス「is.gd」へリクエストを送る
+                const response = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
+                const data = await response.json();
+                
+                if(data.shorturl) {
+                    inputEl.value = data.shorturl;
+                    alert('⚡URLを短くしました！コピーして使ってください。');
+                } else {
+                    alert('短縮に失敗しました。通常の長いURLのままお使いください。');
+                }
+            } catch (error) {
+                alert('通信エラーが発生しました。ネット上(GitHub等)に公開すると動くようになります！');
+            }
+        }
+
+        function copyLink(id) {
+            const copyText = document.getElementById(id);
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            alert('コピーしました！');
+        }
+
+        // --- 幹事のロジック（変更なし） ---
+        function saveParticipant(name, status, allergy) {
+            const key = 'event_' + eventId;
+            let list = JSON.parse(localStorage.getItem(key)) || [];
+            const existingIndex = list.findIndex(m => m.name === name);
+            if (existingIndex > -1) {
+                list[existingIndex].status = status;
+                list[existingIndex].allergy = allergy;
+            } else {
+                list.push({ name: name, status: status, allergy: allergy, paid: false });
+            }
+            localStorage.setItem(key, JSON.stringify(list));
+            updateAdminList();
+        }
+
+        function showAdminZone() {
+            const key = 'event_' + eventId;
+            if (localStorage.getItem(key)) {
+                document.getElementById('admin-zone').classList.remove('hidden');
+                updateAdminList();
+            }
+        }
+
+        function updateAdminList() {
+            const key = 'event_' + eventId;
+            const list = JSON.parse(localStorage.getItem(key)) || [];
+            const tbody = document.getElementById('member-list-body');
+            tbody.innerHTML = '';
+            let attendCount = 0; let paidCount = 0;
+
+            list.forEach((member, index) => {
+                if (member.status === '🥳 行きます！') attendCount++;
+                if (member.paid && member.status === '🥳 行きます！') paidCount++;
+                const tr = document.createElement('tr');
+                tr.className = "border-b text-gray-700";
+                tr.innerHTML = `
+                    <td class="py-3 font-bold">${member.name}</td>
+                    <td class="py-3">${member.status}</td>
+                    <td class="py-3 text-xs text-gray-500">${member.allergy || 'なし'}</td>
+                    <td class="py-3 text-center">${member.status === '🥳 行きます！' ? `<input type="checkbox" ${member.paid ? 'checked' : ''} onchange="togglePay(${index})" class="w-4 h-4 accent-indigo-600 cursor-pointer">` : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            const totalUnpaid = (attendCount - paidCount) * fee;
+            const totalPaid = paidCount * fee;
+            document.getElementById('count-attend').innerText = `${attendCount}人`;
+            document.getElementById('count-paid').innerText = `${totalPaid.toLocaleString()}円`;
+            document.getElementById('count-unpaid').innerText = `${totalUnpaid.toLocaleString()}円`;
+        }
+
+        function togglePay(index) {
+            const key = 'event_' + eventId;
+            let list = JSON.parse(localStorage.getItem(key));
+            list[index].paid = !list[index].paid;
+            localStorage.setItem(key, JSON.stringify(list));
+            updateAdminList();
+        }
+
+        function clearData() {
+            if (confirm('管理画面のデータをすべて削除しますか？')) {
+                localStorage.removeItem('event_' + eventId);
+                updateAdminList();
+            }
+        }
+    </script>
+</body>
+</html>
