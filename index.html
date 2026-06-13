@@ -37,6 +37,10 @@
                     <input id="event-pay" type="text" placeholder="例：PayPay or 現金手渡し" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none">
                 </div>
                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">出欠・支払期限</label>
+                    <input id="event-deadline" type="text" placeholder="例：1月10日までにお願いします" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">詳しい説明・メモ</label>
                     <textarea id="event-desc" rows="3" placeholder="例：アレルギーがある方は教えてね！" class="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"></textarea>
                 </div>
@@ -47,6 +51,7 @@
                     <p class="text-sm font-bold text-emerald-800">🎉 招待リンクができました！</p>
                     <input id="share-url" type="text" readonly class="w-full border border-emerald-300 p-2.5 rounded-xl text-xs bg-white focus:outline-none font-mono">
                     <button id="btn-copy-share" onclick="copyLink('share-url', 'btn-copy-share')" class="w-full bg-emerald-600 text-white p-2.5 rounded-xl text-sm font-bold hover:bg-emerald-700 cursor-pointer transition-all">📋 URLをコピーする</button>
+                    <p class="text-[11px] text-emerald-700 text-center pt-1">※コピーしたURLをLINE等でみんなに送ってね！一度URLを開くと、下に管理画面が出現します。</p>
                 </div>
             </div>
 
@@ -61,6 +66,7 @@
                     <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">📍 場所</span><span id="view-place" class="text-sm font-bold text-gray-700"></span></div>
                     <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">💰 会費</span><span class="text-sm font-black text-rose-600"><span id="view-fee"></span> 円</span></div>
                     <div class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">💳 決済</span><span id="view-pay" class="text-sm font-bold text-gray-700"></span></div>
+                    <div id="view-deadline-container" class="flex justify-between border-b border-gray-200 pb-2"><span class="text-xs font-bold text-gray-400">⏳ 期限</span><span id="view-deadline" class="text-sm font-bold text-rose-600"></span></div>
                     <div class="pt-1"><span class="text-xs font-bold text-gray-400 block mb-1">📝 幹事より</span><p id="view-desc" class="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed bg-white p-2 rounded-lg border border-gray-200"></p></div>
                 </div>
 
@@ -130,7 +136,7 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         
-        // イベント固有の識別ID（バグ修正用）
+        // イベント固有の識別ID
         const eventId = urlParams.get('id');
         
         // 各種パラメータ
@@ -139,9 +145,10 @@
         const place = urlParams.get('p');
         const fee   = urlParams.get('f') ? parseInt(urlParams.get('f')) : 0;
         const pay   = urlParams.get('y');
+        const deadline = urlParams.get('e'); // 期限用のパラメータを追加
         const desc  = urlParams.get('s');
 
-        // ゲストの回答データ（URL経由で届いた場合）
+        // ゲストの回答データ
         const gName = urlParams.get('name');
         const gStatus = urlParams.get('status');
         const gAllergy = urlParams.get('allergy');
@@ -159,14 +166,21 @@
                 document.getElementById('view-pay').innerText   = decodeURIComponent(pay || '');
                 document.getElementById('view-desc').innerText  = decodeURIComponent(desc || '');
 
+                // 期限が入力されている場合のみ表示
+                if(deadline) {
+                    document.getElementById('view-deadline').innerText = decodeURIComponent(deadline);
+                } else {
+                    document.getElementById('view-deadline-container').classList.add('hidden');
+                }
+
                 // 幹事のブラウザであれば管理画面を表示
                 showAdminZone();
 
-                // 届いた回答データを記録（自分自身がURLを踏んだ時など）
+                // 届いた回答データを記録
                 if (gName && gStatus) {
                     saveParticipant(decodeURIComponent(gName), decodeURIComponent(gStatus), decodeURIComponent(gAllergy || ''));
                     
-                    // URLを綺麗にする（リロード時の重複登録防止）
+                    // URLを綺麗にする
                     const baseUrl = window.location.origin + window.location.pathname;
                     const cleanParams = new URLSearchParams(window.location.search);
                     cleanParams.delete('name');
@@ -177,18 +191,19 @@
             }
         }
 
-        // 幹事：招待リンクを生成する
+        // 幹事：招待リンクを生成する（バグ修正完了）
         function generateLink() {
             const t = document.getElementById('event-title').value;
             const d = document.getElementById('event-date').value;
             const p = document.getElementById('event-place').value;
             const f = document.getElementById('event-fee').value;
             const y = document.getElementById('event-pay').value;
+            const e = document.getElementById('event-deadline').value; // 期限を取得
             const s = document.getElementById('event-desc').value;
 
             if(!t) return alert('イベント名は必ず入力してください！');
 
-            // 重複を避けるため、タイムスタンプベースの一意のIDを発行
+            // 重複を避けるための一意のIDを発行
             const uniqueId = 'ev_' + Date.now();
 
             const baseUrl = window.location.origin + window.location.pathname;
@@ -199,21 +214,25 @@
             if(p) params.set('p', p);
             if(f) params.set('f', f);
             if(y) params.set('y', y);
+            if(e) params.set('e', e); // パラメータにセット
             if(s) params.set('s', s);
 
             const shareUrl = `${baseUrl}?${params.toString()}`;
             document.getElementById('share-url').value = shareUrl;
             document.getElementById('result-zone').classList.remove('hidden');
             
-            // 初期の空リストを作成して管理画面を立ち上げる
+            // 初期の空リストをLocalStorageに作成
             localStorage.setItem('event_' + uniqueId, JSON.stringify([]));
             
-            // 生成直後はURLをコピーしやすくするために、一時的に疑似eventIdを設定して管理画面を表示
+            // ブラウザのURL欄を生成された招待URLにそっと書き換える（ページはリロードしない！）
             window.history.replaceState({}, '', `${baseUrl}?${params.toString()}`);
-            location.reload(); 
+            
+            // 生成後は幹事自身もすぐに確認できるよう、管理画面のベースエリアを立ち上げておく
+            document.getElementById('admin-zone').classList.remove('hidden');
+            updateAdminListCustom(uniqueId, fee);
         }
 
-        // ゲスト：出欠を報告する（ボタン生成まで）
+        // ゲスト：出欠を報告する
         function submitAttendance(status) {
             const name = document.getElementById('guest-name').value;
             const allergy = document.getElementById('guest-allergy').value;
@@ -234,21 +253,18 @@
             document.getElementById('reply-zone').classList.remove('hidden');
         }
 
-        // LINEへメッセージとURLを転送する魔法
+        // LINEへメッセージとURLを転送する
         function sendViaLine() {
             const replyUrl = document.getElementById('reply-url').value;
             const name = document.getElementById('guest-name').value;
             const eventTitle = decodeURIComponent(title);
             
-            // LINEに送る文章を作成
             const lineText = `【出欠回答】\nイベント：${eventTitle}\n回答者：${name}さん\n以下のリンクを開いて幹事画面に登録を完了させてね！\n\n${replyUrl}`;
-            
-            // LINEの共有リンクスキームを開く
             const lineHref = `https://line.me/R/share?text=${encodeURIComponent(lineText)}`;
             window.location.href = lineHref;
         }
 
-        // クリップボードへコピー＆ボタンUIを「コピー完了」に変える関数
+        // クリップボードへコピー＆ボタンUI変更
         function copyLink(inputId, buttonId) {
             const copyText = document.getElementById(inputId);
             const button = document.getElementById(buttonId);
@@ -257,9 +273,8 @@
             copyText.select();
             navigator.clipboard.writeText(copyText.value);
             
-            // アラートの代わりにおしゃれに文字を変える
             button.innerText = "✅ コピーしました！";
-            button.classList.remove('bg-emerald-600', 'bg-gray-700', 'bg-indigo-600');
+            button.classList.remove('bg-emerald-600', 'bg-gray-700');
             button.classList.add('bg-emerald-500');
 
             setTimeout(() => {
@@ -294,7 +309,12 @@
         }
 
         function updateAdminList() {
-            const key = 'event_' + eventId;
+            updateAdminListCustom(eventId, fee);
+        }
+
+        // 管理画面の計算ロジック（共通化）
+        function updateAdminListCustom(targetId, targetFee) {
+            const key = 'event_' + targetId;
             const list = JSON.parse(localStorage.getItem(key)) || [];
             const tbody = document.getElementById('member-list-body');
             tbody.innerHTML = '';
@@ -309,29 +329,32 @@
                     <td class="py-3 font-bold">${member.name}</td>
                     <td class="py-3">${member.status}</td>
                     <td class="py-3 text-xs text-gray-500">${member.allergy || 'なし'}</td>
-                    <td class="py-3 text-center">${member.status === '🥳 行きます！' ? `<input type="checkbox" ${member.paid ? 'checked' : ''} onchange="togglePay(${index})" class="w-4 h-4 accent-indigo-600 cursor-pointer">` : '-'}</td>
+                    <td class="py-3 text-center">${member.status === '🥳 行きます！' ? `<input type="checkbox" ${member.paid ? 'checked' : ''} onchange="togglePay('${targetId}', ${targetFee}, ${index})" class="w-4 h-4 accent-indigo-600 cursor-pointer">` : '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
-            const totalUnpaid = (attendCount - paidCount) * fee;
-            const totalPaid = paidCount * fee;
+            const totalUnpaid = (attendCount - paidCount) * targetFee;
+            const totalPaid = paidCount * targetFee;
             document.getElementById('count-attend').innerText = `${attendCount}人`;
             document.getElementById('count-paid').innerText = `${totalPaid.toLocaleString()}円`;
             document.getElementById('count-unpaid').innerText = `${totalUnpaid.toLocaleString()}円`;
         }
 
-        function togglePay(index) {
-            const key = 'event_' + eventId;
+        function togglePay(targetId, targetFee, index) {
+            const key = 'event_' + targetId;
             let list = JSON.parse(localStorage.getItem(key));
             list[index].paid = !list[index].paid;
             localStorage.setItem(key, JSON.stringify(list));
-            updateAdminList();
+            updateAdminListCustom(targetId, targetFee);
         }
 
         function clearData() {
             if (confirm('管理画面のデータをすべて削除しますか？')) {
-                localStorage.removeItem('event_' + eventId);
-                updateAdminList();
+                const currentId = eventId || window.location.search.match(/[?&]id=([^&]+)/)?.[1];
+                if(currentId) {
+                    localStorage.removeItem('event_' + currentId);
+                    updateAdminListCustom(currentId, fee);
+                }
             }
         }
     </script>
