@@ -135,27 +135,21 @@
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        
-        // イベント固有の識別ID
         const eventId = urlParams.get('id');
-        
-        // 各種パラメータ
         const title = urlParams.get('t');
         const date  = urlParams.get('d');
         const place = urlParams.get('p');
         const fee   = urlParams.get('f') ? parseInt(urlParams.get('f')) : 0;
         const pay   = urlParams.get('y');
-        const deadline = urlParams.get('e'); // 期限用のパラメータを追加
+        const deadline = urlParams.get('e');
         const desc  = urlParams.get('s');
 
-        // ゲストの回答データ
         const gName = urlParams.get('name');
         const gStatus = urlParams.get('status');
         const gAllergy = urlParams.get('allergy');
 
         window.onload = function() {
             if (eventId && title) {
-                // 招待状モード：作成画面を隠してゲスト画面を出す
                 document.getElementById('create-zone').classList.add('hidden');
                 document.getElementById('guest-zone').classList.remove('hidden');
                 
@@ -166,21 +160,17 @@
                 document.getElementById('view-pay').innerText   = decodeURIComponent(pay || '');
                 document.getElementById('view-desc').innerText  = decodeURIComponent(desc || '');
 
-                // 期限が入力されている場合のみ表示
                 if(deadline) {
                     document.getElementById('view-deadline').innerText = decodeURIComponent(deadline);
                 } else {
                     document.getElementById('view-deadline-container').classList.add('hidden');
                 }
 
-                // 幹事のブラウザであれば管理画面を表示
                 showAdminZone();
 
-                // 届いた回答データを記録
                 if (gName && gStatus) {
                     saveParticipant(decodeURIComponent(gName), decodeURIComponent(gStatus), decodeURIComponent(gAllergy || ''));
                     
-                    // URLを綺麗にする
                     const baseUrl = window.location.origin + window.location.pathname;
                     const cleanParams = new URLSearchParams(window.location.search);
                     cleanParams.delete('name');
@@ -191,21 +181,18 @@
             }
         }
 
-        // 幹事：招待リンクを生成する（バグ修正完了）
         function generateLink() {
             const t = document.getElementById('event-title').value;
             const d = document.getElementById('event-date').value;
             const p = document.getElementById('event-place').value;
             const f = document.getElementById('event-fee').value;
             const y = document.getElementById('event-pay').value;
-            const e = document.getElementById('event-deadline').value; // 期限を取得
+            const e = document.getElementById('event-deadline').value;
             const s = document.getElementById('event-desc').value;
 
             if(!t) return alert('イベント名は必ず入力してください！');
 
-            // 重複を避けるための一意のIDを発行
             const uniqueId = 'ev_' + Date.now();
-
             const baseUrl = window.location.origin + window.location.pathname;
             const params = new URLSearchParams();
             params.set('id', uniqueId);
@@ -214,25 +201,20 @@
             if(p) params.set('p', p);
             if(f) params.set('f', f);
             if(y) params.set('y', y);
-            if(e) params.set('e', e); // パラメータにセット
+            if(e) params.set('e', e);
             if(s) params.set('s', s);
 
             const shareUrl = `${baseUrl}?${params.toString()}`;
             document.getElementById('share-url').value = shareUrl;
             document.getElementById('result-zone').classList.remove('hidden');
             
-            // 初期の空リストをLocalStorageに作成
             localStorage.setItem('event_' + uniqueId, JSON.stringify([]));
-            
-            // ブラウザのURL欄を生成された招待URLにそっと書き換える（ページはリロードしない！）
             window.history.replaceState({}, '', `${baseUrl}?${params.toString()}`);
             
-            // 生成後は幹事自身もすぐに確認できるよう、管理画面のベースエリアを立ち上げておく
             document.getElementById('admin-zone').classList.remove('hidden');
             updateAdminListCustom(uniqueId, fee);
         }
 
-        // ゲスト：出欠を報告する
         function submitAttendance(status) {
             const name = document.getElementById('guest-name').value;
             const allergy = document.getElementById('guest-allergy').value;
@@ -248,12 +230,10 @@
             const replyUrl = `${baseUrl}?${params.toString()}`;
             document.getElementById('reply-url').value = replyUrl;
             
-            // 画面の切り替え
             document.getElementById('input-area').classList.add('hidden');
             document.getElementById('reply-zone').classList.remove('hidden');
         }
 
-        // LINEへメッセージとURLを転送する
         function sendViaLine() {
             const replyUrl = document.getElementById('reply-url').value;
             const name = document.getElementById('guest-name').value;
@@ -264,7 +244,6 @@
             window.location.href = lineHref;
         }
 
-        // クリップボードへコピー＆ボタンUI変更
         function copyLink(inputId, buttonId) {
             const copyText = document.getElementById(inputId);
             const button = document.getElementById(buttonId);
@@ -285,7 +264,6 @@
             }, 2000);
         }
 
-        // --- 幹事の管理ロジック ---
         function saveParticipant(name, status, allergy) {
             const key = 'event_' + eventId;
             let list = JSON.parse(localStorage.getItem(key)) || [];
@@ -312,7 +290,6 @@
             updateAdminListCustom(eventId, fee);
         }
 
-        // 管理画面の計算ロジック（共通化）
         function updateAdminListCustom(targetId, targetFee) {
             const key = 'event_' + targetId;
             const list = JSON.parse(localStorage.getItem(key)) || [];
